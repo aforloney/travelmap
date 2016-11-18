@@ -2,53 +2,158 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 <body>
-  <style type="text/css">
-
-      @-webkit-keyframes rotate {
-        from {
-          -webkit-transform: rotateY(0deg);
-          -moz-transform: rotateY(0deg);
-          -ms-transform: rotateY(0deg);
-          transform: rotateY(0deg);
-        }
-        to { 
-          -webkit-transform: rotateY(360deg);
-          -moz-transform: rotateY(360deg);
-          -ms-transform: rotateY(360deg);
-          transform: rotateY(360deg);
-        }
-      }
-
-      #container2
-      {
-          -webkit-animation-name:             rotate; 
-          -webkit-animation-duration:         25s; 
-          -webkit-animation-iteration-count:  infinite;
-          -webkit-animation-timing-function:  linear;
-      }
-
-  </style>
-
   <script src="src/d3.v3.min.js"></script>
   <script src="src/topojson.v1.min.js"></script>
   <script src="src/datamaps.all.min.js"></script>
+  <script src="src/exif.js"></script>
+  <script src="https://code.jquery.com/jquery-2.2.4.js"></script>
   
   <div id="myContainer" style="display:inline-block">
-    
     <div id="container" style="position: relative; width: 500px; height: 200px; display:inline-block"></div>
-
     <div id="msgContainer" style="display:inline-block; position: absolute; top 100px; left: 500px; ">
         <div id="msg"></div>
     </div>
 
     <!-- This is the area to upload files and/or introduce drag and drop functionality-->
     <div id="fileUploader" style="display:inline-block; position: absolute; top: 100px; left: 500px">
-      <input type="file" style="display:inline-block">Select me</input>
+      <input type="file" id="uploadImg" style="display:inline-block"></input>
+      <div id="address"></div>
     </div>
   </div>
 
 
-     <script>
+  <script>
+
+     var states = {
+        'Arizona': 'AZ',
+        'Alabama': 'AL',
+        'Alaska': 'AK',
+        'Arizona': 'AZ',
+        'Arkansas': 'AR',
+        'California': 'CA',
+        'Colorado': 'CO',
+        'Connecticut': 'CT',
+        'Delaware': 'DE',
+        'Florida': 'FL',
+        'Georgia': 'GA',
+        'Hawaii': 'HI',
+        'Idaho': 'ID',
+        'Illinois': 'IL',
+        'Indiana': 'IN',
+        'Iowa': 'IA',
+        'Kansas': 'KS',
+        'Kentucky': 'KY',
+        'Kentucky': 'KY',
+        'Louisiana': 'LA',
+        'Maine': 'ME',
+        'Maryland': 'MD',
+        'Massachusetts': 'MA',
+        'Michigan': 'MI',
+        'Minnesota': 'MN',
+        'Mississippi': 'MS',
+        'Missouri': 'MO',
+        'Montana': 'MT',
+        'Nebraska': 'NE',
+        'Nevada': 'NV',
+        'New Hampshire': 'NH',
+        'New Jersey': 'NJ',
+        'New Mexico': 'NM',
+        'New York': 'NY',
+        'North Carolina': 'NC',
+        'North Dakota': 'ND',
+        'Ohio': 'OH',
+        'Oklahoma': 'OK',
+        'Oregon': 'OR',
+        'Pennsylvania': 'PA',
+        'Rhode Island': 'RI',
+        'South Carolina': 'SC',
+        'South Dakota': 'SD',
+        'Tennessee': 'TN',
+        'Texas': 'TX',
+        'Utah': 'UT',
+        'Vermont': 'VT',
+        'Virginia': 'VA',
+        'Washington': 'WA',
+        'West Virginia': 'WV',
+        'Wisconsin': 'WI',
+        'Wyoming': 'WY',
+    };
+
+
+     var fileEle = document.getElementById("uploadImg");
+     fileEle.addEventListener("change", getExifData, false);
+
+     function getExifData() {
+        var files = this.files;
+
+        for (var i = 0; i < files.length; i++) {
+          EXIF.getData(files[i], function() {
+                  var exifData = EXIF.getAllTags(this);
+                  var addressEle = document.getElementById("address");
+
+                  // check whether we have actual data within the IMG,
+                  if (Object.keys(exifData).length > 0) {
+
+                    var latRef  = exifData['GPSLatitudeRef'];
+                    var latList = exifData['GPSLatitude'];
+                    var lat = DMS(latList);
+
+                    if (latRef == "S") lat = lat * -1;
+
+                    var lngRef  = exifData['GPSLongitudeRef'];
+                    var lngList = exifData['GPSLongitude'];
+                    var lng = DMS(lngList); 
+
+                    if (lngRef == "W") lng = lng * -1;
+
+                    $.ajax({
+                          type: 'GET',
+                          url: 'http://nominatim.openstreetmap.org/reverse',
+                          data: {
+                                  'format': 'json',
+                                  'lat' : lat,
+                                  'lon': lng
+                          },
+                          success: function(data) {
+                              var address = data.address;
+                              var state = address.state;
+                              /*
+                                  data.address = {
+                                      city:"Providence",
+                                      country:"United States of America",
+                                      country_code:"us",
+                                      county:"Providence County",
+                                      house_number:"112",
+                                      postcode:"02906",
+                                      road:"4th Street",
+                                      state:"Rhode Island"
+                                  };
+                              */
+
+                              console.log("updating the map for", state);
+
+                              var mapData = {};
+                              mapData[states[state]] = { 'fillKey' : 'VISITED' };
+                              map.updateChoropleth(mapData);
+
+                              addressEle.innerHTML = data.display_name;
+                          }
+                    });
+                  }
+                  else {
+                        addressEle.innerHTML = "Unable to read GPS data.";
+                  }
+              });
+          }
+      }
+
+     function DMS(coords) {
+        var deg = coords[0],
+            mins = coords[1],
+            sec = coords[2];
+        return ( deg + ( (mins / 60.) + (sec / 3600.) ) );
+     }
+
      var map = new Datamap({
       scope: 'usa',
       //projection: 'orthographic',
@@ -56,31 +161,15 @@
       responsive: true,
       height: 300,
       fills: {
-        //'NOT VISITED': 'black',
-        '<=25': 'red',
-        '<=10': 'pink',
+        'VISITED': 'blue',
         defaultFill: 'black'
       },
-      data: {},
-      geographyConfig: {
-            popupTemplate: function(geo, data) {
-                return ['<div class="hoverinfo"><strong>',
-                        'Number of images taken in ' + geo.properties.name,
-                        ': ' + data.images,
-                        '</strong></div>'].join('');
-            }
-        }
+      data: {}
      });
 
      map.legend();
 
-     /* this could be stored within a database where there is an AJAX request to retrieve the data
-        as a means of populating what states/locations to show as "visited"
-
-        This should all be driven based of geolocation data taken off images which are uploaded
-        There are libraries to retrieve that information on the C# end so it cannot be determined client-side
-
-     */
+     /*     *************************************** TESTING CODE
      var states = ['RI', 'MA', 'WA', 'FL', 'ME', 'VT', 'NY', 'MD'];
      var fills = ['<=25', '<=10'];
 
@@ -89,7 +178,6 @@
         var state = states.pop();
         if (state != undefined) {
           var m = document.getElementById("msg");
-          //m.innerHTML += "Visting " + state + "</br>";
           var data = {};
           var idx = Math.floor(Math.random() * fills.length);
           data[state] = { 'fillKey' : fills[idx],
@@ -102,70 +190,6 @@
           clearInterval(displayStates);
         }
       }, 1000);
-
-     /*
-       //basic map config with custom fills, mercator projection
-      var map = new Datamap({
-        scope: 'world',
-        element: document.getElementById('container1'),
-        projection: 'mercator',
-        height: 500,
-        fills: {
-          defaultFill: '#f0af0a',
-          lt50: 'rgba(0,244,244,0.9)',
-          gt50: 'red'
-        },
-        data: {
-          USA: {fillKey: 'lt50' },
-          RUS: {fillKey: 'lt50' },
-          CAN: {fillKey: 'lt50' },
-          BRA: {fillKey: 'gt50' },
-          ARG: {fillKey: 'gt50'},
-          COL: {fillKey: 'gt50' },
-          AUS: {fillKey: 'gt50' },
-          ZAF: {fillKey: 'gt50' },
-          MAD: {fillKey: 'gt50' }       
-        }
-      })
-      
-   
-      //sample of the arc plugin
-      map.arc([
-       {
-        origin: {
-            latitude: 40.639722,
-            longitude: 73.778889
-        },
-        destination: {
-            latitude: 37.618889,
-            longitude: -122.375
-        }
-      },
-      {
-          origin: {
-              latitude: 30.194444,
-              longitude: -97.67
-          },
-          destination: {
-              latitude: 25.793333,
-              longitude: -0.290556
-          }
-      }
-      ], {strokeWidth: 2});
-       
-      
-      
-       //bubbles, custom popup on hover template
-     map.bubbles([
-       {name: 'Hot', latitude: 21.32, longitude: 5.32, radius: 10, fillKey: 'gt50'},
-       {name: 'Chilly', latitude: -25.32, longitude: 120.32, radius: 18, fillKey: 'lt50'},
-       {name: 'Hot again', latitude: 21.32, longitude: -84.32, radius: 8, fillKey: 'gt50'},
-
-     ], {
-       popupTemplate: function(geo, data) {
-         return "<div class='hoverinfo'>It is " + data.name + "</div>";
-       }
-     });
-*/
+      */
      </script>
 </body>
