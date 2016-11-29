@@ -6,23 +6,60 @@
   <script src="src/topojson.v1.min.js"></script>
   <script src="src/datamaps.all.min.js"></script>
   <script src="src/exif.js"></script>
+  <script src="src/load-image.all.min.js"></script>
   <script src="https://code.jquery.com/jquery-2.2.4.js"></script>
   
   <div id="myContainer" style="display:inline-block">
     <div id="container" style="position: relative; width: 500px; height: 200px; display:inline-block"></div>
-    <div id="msgContainer" style="display:inline-block; position: absolute; top 100px; left: 500px; ">
+    <div id="msgContainer" style="display:inline-block; position: absolute; top 100px; left: 500px;">
         <div id="msg"></div>
     </div>
-
     <!-- This is the area to upload files and/or introduce drag and drop functionality-->
     <div id="fileUploader" style="display:inline-block; position: absolute; top: 100px; left: 500px">
-      <input type="file" id="uploadImg" style="display:inline-block"></input>
-      <div id="address"></div>
+     <form action="pending.php" method="POST" enctype="multipart/form-data">
+         <input type="file" mutiple="multiple" id="uploadImg" name="upload" style="display:block"></input>
+         <div id="address_input" style="display:inline-block">
+            <span style="float:left">Address </span>
+            <input id="address" type="text" style="width:500px;float:right"></input>
+          </div>
+          <div id="comment_input" style="display:inline-block">
+            <span style="float:left">Comment</span>
+            <input id="blurb" type="text" style="width:500px;float:right"></input>
+          </div>
+            <!-- <button id="OK" style="display:block">Okay</button> -->
+            <div id="form_footer" style="display:inline-block">
+              <input type="submit"></input>
+            </div>
+      </form>
+
     </div>
-  </div>
+      <div>Pending Images</div>
+      <div id ="preview" style="margin: 5px; width:500px"></div>
+
+  </div>  
 
 
   <script>
+
+    function get_pending() {
+      var user_id = 1;
+
+        $.ajax({
+                type: 'GET',
+                url: 'userinfo.php',
+                data: {id: user_id},
+                success: function(data) {
+                  console.log("data: %O", JSON.parse(data));
+                  var obj = JSON.parse(data);
+                  var msg = document.getElementById("msg");
+                  msg.innerHTML = "Number of pending images: " + obj.rows;
+                }
+        });
+    }
+
+    $(document).ready(function() {
+        get_pending();
+    });
 
      var states = {
         'Arizona': 'AZ',
@@ -80,6 +117,57 @@
     };
 
 
+    var okay_btn = document.getElementById('OK');
+    //okay_btn.addEventListener("click", submit_pending, false);
+
+    function submit_pending() {
+        var addressEle = document.getElementById("address");
+        var file = document.getElementById("uploadImg");
+        var blurb = document.getElementById("blurb");
+
+        console.log("Trying to submit pending data...");
+
+        if (address.value != '') {
+          console.log("Address: ", address.value);
+          var that = this.dataset;
+          var blurbValue = blurb.value;
+
+          $.ajax({
+                  type: 'POST',
+                  url: 'pending.php',
+                  data: {
+                          user_id: 1,
+                          filepath: file.value,
+                          lng: that.long,
+                          lat: that.lat,
+                          address: that.address,
+                          city: that.city,
+                          state: that.state,
+                          postal: that.postal,
+                          country: that.country,
+                          blurb: blurbValue,
+                          dt: that.date
+                  },
+                  success: function(data) {
+                      var obj = JSON.parse(data);
+                      console.log("obj %O", obj);
+                      if (obj.status == "success") {
+                        var msg = document.getElementById("msg");
+                        var address = document.getElementById("address");
+                        var blurb = document.getElementById("blurb");
+
+                        get_pending();
+
+                        // reset input fields,
+                        address.value = '';
+                        blurb.value = '';
+
+                    }
+                 }
+            });
+        }
+    }
+
      var fileEle = document.getElementById("uploadImg");
      fileEle.addEventListener("change", getExifData, false);
 
@@ -90,6 +178,7 @@
           EXIF.getData(files[i], function() {
                   var exifData = EXIF.getAllTags(this);
                   var addressEle = document.getElementById("address");
+                  var okay_btn = document.getElementById("OK");
 
                   // check whether we have actual data within the IMG,
                   if (Object.keys(exifData).length > 0) {
@@ -136,9 +225,28 @@
                               mapData[states[state]] = { 'fillKey' : 'VISITED' };
                               map.updateChoropleth(mapData);
 
-                              addressEle.innerHTML = data.display_name;
-                          }
+                              addressEle.value = data.display_name;
+
+                              okay_btn.dataset['long'] = lng;
+                              okay_btn.dataset['lat'] = lat,
+                              okay_btn.dataset['address'] = data.display_name;
+                              okay_btn.dataset['city'] = data.address.city;
+                              okay_btn.dataset['state'] = data.address.state;
+                              okay_btn.dataset['postal'] = data.address.postcode;
+                              okay_btn.dataset['country'] = data.address.country_code;
+                              okay_btn.dataset['date'] = new Date();
+                         }
                     });
+
+                          loadImage(
+                              this,
+                              function (img) {
+                                  document.getElementById("preview").appendChild(img);
+                              },
+                              {orientation: true,
+                               maxWidth: 200,
+                               maxHeight: 200} // Options
+                          );
                   }
                   else {
                         addressEle.innerHTML = "Unable to read GPS data.";
@@ -155,16 +263,16 @@
      }
 
      var map = new Datamap({
-      scope: 'usa',
-      //projection: 'orthographic',
-      element: document.getElementById('container'),
-      responsive: true,
-      height: 300,
-      fills: {
-        'VISITED': 'blue',
-        defaultFill: 'black'
-      },
-      data: {}
+        scope: 'usa',
+        //projection: 'orthographic',
+        element: document.getElementById('container'),
+        responsive: true,
+        height: 300,
+        fills: {
+          'VISITED': 'blue',
+          defaultFill: 'black'
+        },
+        data: {}
      });
 
      map.legend();
