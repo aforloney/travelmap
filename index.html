@@ -9,7 +9,7 @@
   <script src="src/load-image.all.min.js"></script>
   <script src="https://code.jquery.com/jquery-2.2.4.js"></script>
   
-  <div id="myContainer" style="display:inline-block">
+  <div id="myContainer" style="display:block">
     <div id="container" style="position: relative; width: 500px; height: 200px; display:inline-block"></div>
     <div id="msgContainer" style="display:inline-block; position: absolute; top 100px; left: 500px;">
         <div id="banner"></div>
@@ -29,8 +29,10 @@
       </form>
 
     </div>
+    <div id="previewContainer" style="display:inline-block;position: absolute; top: 300px; left: 500px">
       <div>Image Preview</div>
       <div id ="preview" style="margin: 5px; width:500px"></div>
+    </div>
 
   </div>  
 
@@ -44,7 +46,7 @@
 
     function hidden_input(name, value) {
         var d = document.getElementById("OK");
-        d.dataset[name] = value;
+        d.dataset[name] = value || '';
     } 
 
     function get_user() {
@@ -72,20 +74,20 @@
       var user_id = 1;
 
         $.ajax({
-                type: 'GET',
-                url: 'server/userinfo.php',
-                data: {id: user_id,
-                       action: 'get_pending'},
-                success: function(data) {
-                  var obj = JSON.parse(data);
-                  if (obj.status == "success") {
-                    var msg = document.getElementById("msg");
-                    msg.innerHTML = "Number of images: " + obj.message;
-                  }
-                  else {
-                    console.log("get_pending failed. %O", data);
-                  }
-                }
+            type: 'GET',
+            url: 'server/userinfo.php',
+            data: {id: user_id,
+                    action: 'get_pending'},
+            success: function(data) {
+              var obj = JSON.parse(data);
+              if (obj.status == "success") {
+                var msg = document.getElementById("msg");
+                msg.innerHTML = "Number of images: " + obj.message;
+              }
+              else {
+                console.log("get_pending failed. %O", data);
+              }
+            }
         });
     }
 
@@ -161,15 +163,15 @@
   
     function submit_pending() {
         var address = document.getElementById("address");
+        var preview = document.getElementById("preview");
         var hidden = document.getElementById("OK");
         var file = document.getElementById("uploadImg");
         var that = hidden.dataset;        
 
         var data = new FormData();
 
-        $.each(file.files, function(key, value)
-        {
-            data.append(key, value);
+        $.each(file.files, function(key, value) {
+              data.append(key, value);
         });
 
         data.append("user_id", 1);
@@ -208,10 +210,11 @@
 
               address.value = '';
               file.value = '';
+              // remove canvas element,
+              $("#preview").empty();
         }
     }
     
-
      var fileEle = document.getElementById("uploadImg");
      fileEle.addEventListener("change", getExifData, false);
 
@@ -266,7 +269,7 @@
                               console.log("updating the map for", state);
 
                               var mapData = {};
-                              mapData[states[state]] = { 'fillKey' : 'VISITED' };
+                              mapData[states[state]] = { 'fillKey' : 'PENDING' };
                               map.updateChoropleth(mapData);
 
                               addressEle.value = data.display_name;
@@ -313,6 +316,7 @@
         height: 300,
         fills: {
           'VISITED': 'blue',
+          'PENDING': 'red',
           defaultFill: 'black'
         },
         data: {}

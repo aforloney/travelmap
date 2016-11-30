@@ -72,12 +72,12 @@ if ($uploadOk == 1) {
 
     /* execute prepared statement */
     mysqli_stmt_execute($stmt);
-    
+
     mysqli_close($link);
 }
 
 $arr = array('status' => ( $uploadOk == 1 ? 'success' : 'failure' ) ,
-                    'message' => $message);
+             'message' => $message);
 echo json_encode($arr);
 
 ?>
