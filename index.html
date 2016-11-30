@@ -14,6 +14,7 @@
     <div id="msgContainer" style="display:inline-block; position: absolute; top 100px; left: 500px;">
         <div id="banner"></div>
         <div id="msg"></div>
+        <div id="errorMessage" style="color:red;font:weight"></div>
     </div>
     <div id="fileUploader" style="display:inline-block; position: absolute; top: 100px; left: 500px">
      <form id="myForm" action="pending.php" method="POST" enctype="multipart/form-data">
@@ -36,6 +37,11 @@
 
   <script>
 
+    function display_error(message) {
+        var e = document.getElementById("errorMessage");
+        e.innerHTML = message;
+    }
+
     function hidden_input(name, value) {
         var d = document.getElementById("OK");
         d.dataset[name] = value;
@@ -46,7 +52,7 @@
 
       $.ajax({
             type: 'GET',
-            url: 'userinfo.php',
+            url: 'server/userinfo.php',
             data: {id: user_id,
                    action: 'get_user'},
             success: function(data) {
@@ -67,7 +73,7 @@
 
         $.ajax({
                 type: 'GET',
-                url: 'userinfo.php',
+                url: 'server/userinfo.php',
                 data: {id: user_id,
                        action: 'get_pending'},
                 success: function(data) {
@@ -156,6 +162,7 @@
     function submit_pending() {
         var address = document.getElementById("address");
         var hidden = document.getElementById("OK");
+        var file = document.getElementById("uploadImg");
         var that = hidden.dataset;        
 
         var data = new FormData();
@@ -182,7 +189,7 @@
 
           $.ajax({
                   type: 'POST',
-                  url: 'pending.php',
+                  url: 'server/pending.php',
                   processData: false, // Don't process the files
                   contentType: false, // Set content type to false 
                   data: data,
@@ -190,18 +197,17 @@
                       var obj = JSON.parse(data);
                       console.log("obj %O", obj);
                       if (obj.status == "success") {
-                        //var address = document.getElementById("address");
-                        var file = document.getElementById("uploadImg");
-
-                        get_pending();
-
-                        // reset input fields,
-                        address.value = '';
-                        file.value = '';
-
-                    }
+                          get_pending();
+                      }
+                      else {
+                        // an error had occurred,
+                        display_error(obj.message);
+                      }
                  }
             });
+
+              address.value = '';
+              file.value = '';
         }
     }
     

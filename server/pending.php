@@ -4,15 +4,6 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 'on');
 
-$link = mysqli_connect("localhost", "aforloney", "password", "places");
-
-mysqli_report(MYSQLI_REPORT_ALL);
-
-/*
-	Move the uploaded image over to a "pending" folder,
-*/
-
-
 $target_dir = "pending/";
 $target_file = $target_dir . basename($_FILES[0]["name"]);
 $uploadOk = 1;
@@ -42,49 +33,51 @@ if($imageFileType != "jpg" && $imageFileType != "png" && $imageFileType != "jpeg
     $uploadOk = 0;
 }
 // Check if $uploadOk is set to 0 by an error
-if ($uploadOk == 0) {
-    $message = "Sorry, your file was not uploaded.";
-// if everything is ok, try to upload file
-} else {
+if ($uploadOk == 1) {
     if (move_uploaded_file($_FILES[0]["tmp_name"], $target_file)) {
         $message = "The file ". basename( $_FILES[0]["name"]). " has been uploaded.";
     } else {
+        $uploadOk = 0;
         $message = "Sorry, there was an error uploading your file.";
     }
 }
 
+if ($uploadOk == 1) {
 
-if (!$link) {
-    printf("Connect failed: %s\n", mysqli_connect_error());
-    exit();
+    $link = mysqli_connect("localhost", "aforloney", "password", "places");
+
+    mysqli_report(MYSQLI_REPORT_ALL);
+
+    if (!$link) {
+        printf("Connect failed: %s\n", mysqli_connect_error());
+        exit();
+    }
+
+    $stmt = mysqli_prepare($link, "INSERT INTO image_info VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+    mysqli_stmt_bind_param($stmt, 'iisddsssssss', $dft, $id, $filepath, $long, $lat, $address, $city, $state, $postal, $country, $blurb, $dt);
+
+    $dft = '';
+    $id = $_POST['user_id'];
+    $filepath = $target_file;
+    $long = $_POST['lng'];
+    $lat = $_POST['lat'];
+    $address = $_POST['address'];
+    $city = $_POST['city'];
+    $state = $_POST['state'];
+    $postal = $_POST['postal'];
+    $country = $_POST['country'];
+    $blurb = '';
+    $dt = date("Y-m-d H:i:s");
+
+    /* execute prepared statement */
+    mysqli_stmt_execute($stmt);
+    
+    mysqli_close($link);
 }
 
-$stmt = mysqli_prepare($link, "INSERT INTO image_info VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-
-mysqli_stmt_bind_param($stmt, 'iisddsssssss', $dft, $id, $filepath, $long, $lat, $address, $city, $state, $postal, $country, $blurb, $dt);
-
-$dft = '';
-$id = $_POST['user_id'];
-$filepath = $target_file;
-$long = $_POST['lng'];
-$lat = $_POST['lat'];
-$address = $_POST['address'];
-$city = $_POST['city'];
-$state = $_POST['state'];
-$postal = $_POST['postal'];
-$country = $_POST['country'];
-$blurb = '';
-$dt = date("Y-m-d H:i:s");
-
-/* execute prepared statement */
-mysqli_stmt_execute($stmt);
-
-if ( mysqli_stmt_affected_rows($stmt) > 0) {
-	$arr = array('status' => 'success',
-				 'message' => $message);
-	echo json_encode($arr);
-}
-
-mysqli_close($link);
+$arr = array('status' => ( $uploadOk == 1 ? 'success' : 'failure' ) ,
+                    'message' => $message);
+echo json_encode($arr);
 
 ?>

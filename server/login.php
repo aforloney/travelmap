@@ -13,7 +13,6 @@ if (isset($config->user) &&
 	isset($config->db)) {
 
 	$conn = new Connection($config->user, $config->password, $config->db);
-
 	if !($conn) {
 		die('Connection cannot be established');
 	}
