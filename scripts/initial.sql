@@ -11,27 +11,13 @@ CREATE TABLE users (id INT PRIMARY KEY AUTO_INCREMENT DEFAULT 1, username VARCHA
 CREATE TABLE images (id INT PRIMARY KEY AUTO_INCREMENT DEFAULT NULL
 				  , user_id INT NOT NULL
 				  , filepath VARCHAR(255) NOT NULL
-				  /* setup foreign key on the `users`.`id` reference */
-				  , FOREIGN KEY (user_id) REFERENCES users(id);
+				  , FOREIGN KEY (user_id) REFERENCES users(id));
 
-CREATE TABLE image_info (id INT PRIMARY KEY NOT NULL
-				  , image_id INT NOT NULL,
-				  , latitude float(5,5)
-				  , longitude float(5,5)
-				  , address varchar(255)
-				  , city varchar(255)
-				  , state varchar(255)
-				  , postal varchar(255)
-				  , country varchar(255)
-				  , blurb varchar(255)
-				  , dt DATE NOT NULL
-				  , FOREIGN KEY (image_id) REFERENCES images(id));
-
-CREATE TABLE pending_images (id INT PRIMARY KEY AUTO_INCREMENT DEFAULT NULL    
+CREATE TABLE image_info (id INT PRIMARY KEY AUTO_INCREMENT DEFAULT NULL    
 							, user_id INT NOT NULL
 							, filepath VARCHAR(255) NOT NULL    
-							, latitude float(5,5)    
-							, longitude float(5,5)        
+							, latitude float(10,8)    
+							, longitude float(10,8)        
 							, address varchar(255)    
 							, city varchar(255)    
 							, state varchar(255)    

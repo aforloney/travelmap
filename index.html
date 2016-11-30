@@ -12,28 +12,23 @@
   <div id="myContainer" style="display:inline-block">
     <div id="container" style="position: relative; width: 500px; height: 200px; display:inline-block"></div>
     <div id="msgContainer" style="display:inline-block; position: absolute; top 100px; left: 500px;">
+        <div id="banner"></div>
         <div id="msg"></div>
     </div>
-    <!-- This is the area to upload files and/or introduce drag and drop functionality-->
     <div id="fileUploader" style="display:inline-block; position: absolute; top: 100px; left: 500px">
-     <form action="pending.php" method="POST" enctype="multipart/form-data">
-         <input type="file" mutiple="multiple" id="uploadImg" name="upload" style="display:block"></input>
+     <form id="myForm" action="pending.php" method="POST" enctype="multipart/form-data">
+         <input type="file" id="uploadImg" name="upload" style="display:block"></input>
+         <input type="hidden" id="OK" name="values" value="hi"></input>
          <div id="address_input" style="display:inline-block">
-            <span style="float:left">Address </span>
             <input id="address" type="text" style="width:500px;float:right"></input>
           </div>
-          <div id="comment_input" style="display:inline-block">
-            <span style="float:left">Comment</span>
-            <input id="blurb" type="text" style="width:500px;float:right"></input>
-          </div>
-            <!-- <button id="OK" style="display:block">Okay</button> -->
-            <div id="form_footer" style="display:inline-block">
+            <div id="form_footer" style="display:block">
               <input type="submit"></input>
             </div>
       </form>
 
     </div>
-      <div>Pending Images</div>
+      <div>Image Preview</div>
       <div id ="preview" style="margin: 5px; width:500px"></div>
 
   </div>  
@@ -41,23 +36,55 @@
 
   <script>
 
+    function hidden_input(name, value) {
+        var d = document.getElementById("OK");
+        d.dataset[name] = value;
+    } 
+
+    function get_user() {
+      var user_id = 1;
+
+      $.ajax({
+            type: 'GET',
+            url: 'userinfo.php',
+            data: {id: user_id,
+                   action: 'get_user'},
+            success: function(data) {
+              var obj = JSON.parse(data);
+              if (obj.status == "success") {
+                var banner = document.getElementById("banner");
+                banner.innerHTML = "Welcome, " + obj.message;
+              }
+              else {
+                    console.log("get_user failed. %O", data);
+              }
+            }
+        });
+    }
+
     function get_pending() {
       var user_id = 1;
 
         $.ajax({
                 type: 'GET',
                 url: 'userinfo.php',
-                data: {id: user_id},
+                data: {id: user_id,
+                       action: 'get_pending'},
                 success: function(data) {
-                  console.log("data: %O", JSON.parse(data));
                   var obj = JSON.parse(data);
-                  var msg = document.getElementById("msg");
-                  msg.innerHTML = "Number of pending images: " + obj.rows;
+                  if (obj.status == "success") {
+                    var msg = document.getElementById("msg");
+                    msg.innerHTML = "Number of images: " + obj.message;
+                  }
+                  else {
+                    console.log("get_pending failed. %O", data);
+                  }
                 }
         });
     }
 
     $(document).ready(function() {
+        get_user();
         get_pending();
     });
 
@@ -117,56 +144,67 @@
     };
 
 
-    var okay_btn = document.getElementById('OK');
+    //var okay_btn = document.getElementById('OK');
     //okay_btn.addEventListener("click", submit_pending, false);
 
-    function submit_pending() {
-        var addressEle = document.getElementById("address");
-        var file = document.getElementById("uploadImg");
-        var blurb = document.getElementById("blurb");
+    $("#myForm").submit(function(e) {          
+          e.preventDefault();
+          submit_pending();
+    });
 
-        console.log("Trying to submit pending data...");
+  
+    function submit_pending() {
+        var address = document.getElementById("address");
+        var hidden = document.getElementById("OK");
+        var that = hidden.dataset;        
+
+        var data = new FormData();
+
+        $.each(file.files, function(key, value)
+        {
+            data.append(key, value);
+        });
+
+        data.append("user_id", 1);
+        data.append("filepath", file.value);
+        data.append("lng", that.lng);
+        data.append("lat", that.lat);
+        data.append("address", that.address);
+        data.append("city", that.city);
+        data.append("state", that.state);
+        data.append("postal", that.postal);
+        data.append("country", that.country);
+
+        console.log("Trying to submit data...");
 
         if (address.value != '') {
           console.log("Address: ", address.value);
-          var that = this.dataset;
-          var blurbValue = blurb.value;
 
           $.ajax({
                   type: 'POST',
                   url: 'pending.php',
-                  data: {
-                          user_id: 1,
-                          filepath: file.value,
-                          lng: that.long,
-                          lat: that.lat,
-                          address: that.address,
-                          city: that.city,
-                          state: that.state,
-                          postal: that.postal,
-                          country: that.country,
-                          blurb: blurbValue,
-                          dt: that.date
-                  },
+                  processData: false, // Don't process the files
+                  contentType: false, // Set content type to false 
+                  data: data,
                   success: function(data) {
                       var obj = JSON.parse(data);
                       console.log("obj %O", obj);
                       if (obj.status == "success") {
-                        var msg = document.getElementById("msg");
-                        var address = document.getElementById("address");
-                        var blurb = document.getElementById("blurb");
+                        //var address = document.getElementById("address");
+                        var file = document.getElementById("uploadImg");
 
                         get_pending();
 
                         // reset input fields,
                         address.value = '';
-                        blurb.value = '';
+                        file.value = '';
 
                     }
                  }
             });
         }
     }
+    
 
      var fileEle = document.getElementById("uploadImg");
      fileEle.addEventListener("change", getExifData, false);
@@ -226,15 +264,14 @@
                               map.updateChoropleth(mapData);
 
                               addressEle.value = data.display_name;
-
-                              okay_btn.dataset['long'] = lng;
-                              okay_btn.dataset['lat'] = lat,
-                              okay_btn.dataset['address'] = data.display_name;
-                              okay_btn.dataset['city'] = data.address.city;
-                              okay_btn.dataset['state'] = data.address.state;
-                              okay_btn.dataset['postal'] = data.address.postcode;
-                              okay_btn.dataset['country'] = data.address.country_code;
-                              okay_btn.dataset['date'] = new Date();
+                              hidden_input("user_id", 1);
+                              hidden_input("lng", lng);
+                              hidden_input("lat", lat);
+                              hidden_input("address", data.display_name);
+                              hidden_input("city", data.address.city);
+                              hidden_input("state", data.address.state);
+                              hidden_input("postal", data.address.postcode);
+                              hidden_input("country", data.address.country_code);
                          }
                     });
 
