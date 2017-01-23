@@ -1,67 +1,43 @@
-
-
 <?php
-
-include('validate.php');
-include('connect.php');
-include('config.php');
-
+require('config.php');
 session_start();
 
-if (isset($config->user) && 
-	isset($config->password) &&
-	isset($config->db)) {
+if (isset($_POST) && 
+	isset($_POST["username"]) &&
+	isset($_POST["password"])
+	) {
 
-	$conn = new Connection($config->user, $config->password, $config->db);
-	if !($conn) {
-		die('Connection cannot be established');
+	$link = mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_DATABASE);
+
+	if (!$link) {
+    	echo "Error: Unable to connect to MySQL.";
+    	echo "Debugging errno: " . mysqli_connect_errno();
+    	exit;
 	}
 
-	if (isset($_POST)) {
-		$user = $_POST['user'];
-		if (isset($user) && Validate::validName($user)) {
-			$images = $conn->getImages($user);
+	$stmt = mysqli_prepare($link, "SELECT id FROM user_login WHERE username=? AND password=?");
+	mysqli_stmt_bind_param($stmt, 'ss', $user, $password);
 
-			if (isset(images)) {
-				# display the map
-			}
-		}
+	$user = $_POST["username"];
+	$password = $_POST["password"];
+
+	mysqli_stmt_execute($stmt);
+	mysqli_stmt_bind_result($stmt, $user_id);
+	 /* fetch value */
+	mysqli_stmt_fetch($stmt);
+
+	if (isset($user_id) && is_numeric($user_id)) {
+		$_SESSION["user_id"] = $user_id;
+		header('Location: index.php');
 	}
+	else {
+		// redirect to index.html
+		echo "something bad happened using username: " . $_POST["username"];
+		
+	}
+
+	mysqli_close($link);
 }
 
-# 	VALIDATE.PHP
-class Validate {
-	static function validName($user) { return preg_match('^[a-zA-Z0-9]+$', $user); }
-}
 
-#	CONNECT.PHP
-class Connection {
-	public Connection($user, $pass, $db) {
-		 this->$conn = mysqli_connect($db, $user, $pass);
-	}
-
-	function getConn() {
-		return self->$conn;
-	}
-
-	function getImages($user) {
-		# check if connection is still open before issuing query,
-		$query = '';
-		$rows = mysqli_execute($conn, $query);
-		if (isset($rows)) {
-			return $rows;
-		}
-
-		return NULL;
-	}
-}
-
-class Config {
-	public Config($user, $password) {
-		this->$user = $user;
-		this->$password = $password;
-	}
-	function getUser() { return self->$user; }
-	function getPassword() { return self->$password; }
-}
 ?>

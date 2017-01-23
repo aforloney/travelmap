@@ -14,6 +14,13 @@ CREATE TABLE images (id INT PRIMARY KEY AUTO_INCREMENT DEFAULT NULL
 				  /* setup foreign key on the `users`.`id` reference */
 				  , FOREIGN KEY (user_id) REFERENCES users(id);
 
+/* should have a foreign key setup for image_id as well, */
+CREATE TABLE image_blob (id INT PRIMARY KEY AUTO_INCREMENT DEFAULT NULL
+				  , image_id INT NOT NULL
+				  , user_id INT NOT NULL
+				  , data BLOB
+				  , FOREIGN KEY (user_id) REFERENCES users(id));
+
 CREATE TABLE image_info (id INT PRIMARY KEY NOT NULL
 				  , image_id INT NOT NULL,
 				  , latitude float(10,8)
@@ -55,3 +62,7 @@ FROM `images` img
 INNER JOIN `users` user ON img.user_id = user.id
 INNER JOIN `image_info` info ON info.image_id = img.id
 WHERE info.state = '' AND info.country = ''
+
+select * from `users` user 
+INNER JOIN `image_info` info ON user.id = info.user_id
+WHERE user.id = 1;

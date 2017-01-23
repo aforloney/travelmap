@@ -1,11 +1,21 @@
 
 <?php
 
+require('config.php');
 error_reporting(E_ALL);
 ini_set('display_errors', 'on');
 
-$target_dir = "pending/";
-$target_file = $target_dir . basename($_FILES[0]["name"]);
+$target_dir = "pending/" . $_POST['user_id'] . '/';
+
+if (!file_exists($target_dir)) {
+    mkdir($target_dir, 0777, true);
+}
+
+$date = new DateTime();
+$result = $date->format('Y-m-d-H-i-s');
+$timeString = str_replace('-','', $result);
+
+$target_file = $target_dir . $timeString . '-' . basename($_FILES[0]["name"]);
 $uploadOk = 1;
 $imageFileType = strtolower(pathinfo($target_file,PATHINFO_EXTENSION));
 $message = '';
@@ -44,7 +54,7 @@ if ($uploadOk == 1) {
 
 if ($uploadOk == 1) {
 
-    $link = mysqli_connect("localhost", "aforloney", "password", "places");
+    $link = mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_DATABASE);
 
     mysqli_report(MYSQLI_REPORT_ALL);
 
@@ -54,9 +64,7 @@ if ($uploadOk == 1) {
     }
 
     $stmt = mysqli_prepare($link, "INSERT INTO image_info VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-
     mysqli_stmt_bind_param($stmt, 'iisddsssssss', $dft, $id, $filepath, $long, $lat, $address, $city, $state, $postal, $country, $blurb, $dt);
-
     $dft = '';
     $id = $_POST['user_id'];
     $filepath = $target_file;
@@ -73,11 +81,27 @@ if ($uploadOk == 1) {
     /* execute prepared statement */
     mysqli_stmt_execute($stmt);
 
+    // grab the id sssociated to the executed statement,
+    $img_id = mysqli_insert_id($link);
+
+    /*  insert the associated blob data, maybe store the blob in the above table itself,
+    */
+    $stmt = mysqli_prepare($link, "INSERT INTO image_blob VALUES (?, ?, ?, ?)");
+    mysqli_stmt_bind_param($stmt, 'iiis', $dft, $image_id, $user_id, $blob);
+    $dft = '';
+    $image_id = $img_id;
+    $user_id = $_POST['user_id'];
+    // store away the contents of the file into the database,
+    $blob = base64_encode(file_get_contents($target_file));
+
+    mysqli_stmt_execute($stmt);
+
     mysqli_close($link);
 }
 
-$arr = array('status' => ( $uploadOk == 1 ? 'success' : 'failure' ) ,
+$arr = array('status' => ( $uploadOk == 1 ? 'success' : 'failure' ),
              'message' => $message);
+
 echo json_encode($arr);
 
 ?>
